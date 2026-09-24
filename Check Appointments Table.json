@@ -1,0 +1,64 @@
+{
+  "name": "Check Appointments Table",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "cb883697-7f7e-4540-9403-994eb9b679b9",
+      "name": "Start",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT * FROM appointments ORDER BY id DESC LIMIT 10",
+        "options": {}
+      },
+      "id": "cb3f6bd4-fedf-4908-8002-7cc2f4a4b0c8",
+      "name": "Read Appointments",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.5,
+      "position": [
+        224,
+        0
+      ],
+      "credentials": {
+        "mySql": {
+          "id": "qR8wIMDa6NjVcQ63",
+          "name": "MySQL account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "Read Appointments",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true
+  },
+  "versionId": "74b7e616-76ee-4016-aea5-604ed3b16dc0",
+  "meta": {
+    "instanceId": "defbd24ddc4e5cb8b6b84f7986634177b7d669c95cc9a9735a30f936f0b3814f"
+  },
+  "nodeGroups": [],
+  "id": "XjkFM09LUuUAxJAG",
+  "tags": []
+}

@@ -1,0 +1,398 @@
+{
+  "name": "SVC-Booking Sub-Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "inputSource": "jsonExample",
+        "jsonExample": "{\n  \"provider_id\": \"provider-1\",\n  \"service_id\": \"dental-consultation\",\n  \"requested_date\": \"2026-09-22\",\n  \"patient_name\": \"\",\n  \"phone\": \"\",\n  \"service\": \"\",\n  \"booking_date\": \"\"\n}"
+      },
+      "id": "684788f1-6225-4169-a11b-801cb726f434",
+      "name": "When Executed by Another Workflow",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        0,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get input parameters passed to this workflow\nconst inputData = $input.first().json;\nconst requestedDate = inputData.requested_date || \"2026-09-22\";\n\n// Mock provider working hours and service duration\nconst providerHours = [\"09:00-13:00\", \"14:00-17:00\"]; // Working shifts\nconst serviceDurationMinutes = 30; // e.g., Dental consultation\nconst bufferMinutes = 10; // Buffer between appointments\n\n// Helper to convert time string (HH:mm) to Minutes from midnight\nfunction timeToMinutes(timeStr) {\n    const [hours, minutes] = timeStr.split(':').map(Number);\n    return hours * 60 + minutes;\n}\n\n// Helper to convert minutes back to HH:mm format\nfunction minutesToTime(totalMinutes) {\n    const hours = Math.floor(totalMinutes / 60).toString().padStart(2, '0');\n    const minutes = (totalMinutes % 60).toString().padStart(2, '0');\n    return `${hours}:${minutes}`;\n}\n\n// Generate available slots based on shifts\nlet availableSlots = [];\n\nproviderHours.forEach(shift => {\n    const [startStr, endStr] = shift.split('-');\n    let currentMinutes = timeToMinutes(startStr);\n    const endMinutes = timeToMinutes(endStr);\n\n    while (currentMinutes + serviceDurationMinutes <= endMinutes) {\n        const slotStart = minutesToTime(currentMinutes);\n        currentMinutes += serviceDurationMinutes;\n        const slotEnd = minutesToTime(currentMinutes);\n\n        availableSlots.push({\n            date: requestedDate,\n            start_time: slotStart,\n            end_time: slotEnd,\n            formatted_slot: `${requestedDate} from ${slotStart} to ${slotEnd}`\n        });\n\n        // Add buffer time\n        currentMinutes += bufferMinutes;\n    }\n});\n\n// Return the next available slots\nreturn availableSlots.slice(0, 5).map(slot => ({ json: slot }));"
+      },
+      "id": "fabff845-74cd-45b9-a2c5-cf8133d13543",
+      "name": "Code in JavaScript",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "is-booking",
+              "leftValue": "={{ !!($('When Executed by Another Workflow').item.json.patient_name && String($('When Executed by Another Workflow').item.json.patient_name).trim()) && !!($('When Executed by Another Workflow').item.json.booking_date && String($('When Executed by Another Workflow').item.json.booking_date).trim()) }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "1f8f188c-5b52-4f3b-8b86-80f2347f5a51",
+      "name": "Is Booking Request",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        448,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "table": {
+          "__rl": true,
+          "value": "appointments",
+          "mode": "list",
+          "cachedResultName": "appointments"
+        },
+        "dataMode": "defineBelow",
+        "valuesToSend": {
+          "values": [
+            {
+              "column": "patient_name",
+              "value": "={{ $('When Executed by Another Workflow').item.json.patient_name }}"
+            },
+            {
+              "column": "phone",
+              "value": "={{ $('When Executed by Another Workflow').item.json.phone }}"
+            },
+            {
+              "column": "service",
+              "value": "={{ $('When Executed by Another Workflow').item.json.service }}"
+            },
+            {
+              "column": "booking_date",
+              "value": "={{ $('When Executed by Another Workflow').item.json.booking_date }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "d913ea93-f0f6-4fe1-a934-5ee349ca022b",
+      "name": "Insert rows in a table",
+      "type": "n8n-nodes-base.mySql",
+      "typeVersion": 2.5,
+      "position": [
+        672,
+        0
+      ],
+      "executeOnce": true,
+      "credentials": {
+        "mySql": {
+          "id": "qR8wIMDa6NjVcQ63",
+          "name": "MySQL account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "status",
+              "name": "status",
+              "value": "booked",
+              "type": "string"
+            },
+            {
+              "id": "patient",
+              "name": "patient_name",
+              "value": "={{ $('When Executed by Another Workflow').item.json.patient_name }}",
+              "type": "string"
+            },
+            {
+              "id": "service",
+              "name": "service",
+              "value": "={{ $('When Executed by Another Workflow').item.json.service }}",
+              "type": "string"
+            },
+            {
+              "id": "bdate",
+              "name": "booking_date",
+              "value": "={{ $('When Executed by Another Workflow').item.json.booking_date }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "22fdbc82-033e-487d-9833-44501f2a8dc0",
+      "name": "Booking Confirmation",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        896,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "calendar": {
+          "__rl": true,
+          "value": "chaskaai475@gmail.com",
+          "mode": "list",
+          "cachedResultName": "chaskaai475@gmail.com"
+        },
+        "start": "={{ $('When Executed by Another Workflow').item.json.booking_date + 'T09:00:00' }}",
+        "end": "={{ $('When Executed by Another Workflow').item.json.booking_date + 'T09:30:00' }}",
+        "additionalFields": {
+          "description": "=Patient: {{ $json.patient_name }}\nPhone: {{ $('When Executed by Another Workflow').item.json.phone }}\nService: {{ $json.service }}",
+          "summary": "={{ $json.patient_name }} - {{ $json.service }}"
+        }
+      },
+      "id": "bb8fede7-62cc-426f-a9a0-b4a512788085",
+      "name": "Create an event",
+      "type": "n8n-nodes-base.googleCalendar",
+      "typeVersion": 1.3,
+      "position": [
+        1120,
+        0
+      ],
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "65yWWa6PFWQEivtu",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1K1moU9d8MgjMMGyNTvRWKTbC_meEMuSgLsPvU5W_I2U",
+          "mode": "list",
+          "cachedResultName": "Sheet for booking ",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1K1moU9d8MgjMMGyNTvRWKTbC_meEMuSgLsPvU5W_I2U/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1K1moU9d8MgjMMGyNTvRWKTbC_meEMuSgLsPvU5W_I2U/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "patient_name": "={{ $('When Executed by Another Workflow').item.json.patient_name }}",
+            "phone": "={{ $('When Executed by Another Workflow').item.json.phone }}",
+            "service": "={{ $('When Executed by Another Workflow').item.json.service }}",
+            "booking_date": "={{ $('When Executed by Another Workflow').item.json.booking_date }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "patient_name",
+              "displayName": "patient_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "phone",
+              "displayName": "phone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "service",
+              "displayName": "service",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "booking_date",
+              "displayName": "booking_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "81c38ae1-693d-4e47-b116-339ff1e1158d",
+      "name": "Append row in sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1344,
+        0
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "yJ6MIBsMcxKUml5Y",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "slot",
+              "name": "formatted_slot",
+              "value": "={{ $json.formatted_slot }}",
+              "type": "string"
+            },
+            {
+              "id": "date",
+              "name": "date",
+              "value": "={{ $json.date }}",
+              "type": "string"
+            },
+            {
+              "id": "start",
+              "name": "start_time",
+              "value": "={{ $json.start_time }}",
+              "type": "string"
+            },
+            {
+              "id": "end",
+              "name": "end_time",
+              "value": "={{ $json.end_time }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "44f6b827-faf5-492c-989b-5578286741ed",
+      "name": "Return Slots",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        672,
+        192
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When Executed by Another Workflow": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Is Booking Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Booking Request": {
+      "main": [
+        [
+          {
+            "node": "Insert rows in a table",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Return Slots",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert rows in a table": {
+      "main": [
+        [
+          {
+            "node": "Booking Confirmation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Booking Confirmation": {
+      "main": [
+        [
+          {
+            "node": "Create an event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create an event": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true
+  },
+  "versionId": "e0c06dfa-5d47-465a-a0df-62f2d7c39d2c",
+  "meta": {
+    "instanceId": "defbd24ddc4e5cb8b6b84f7986634177b7d669c95cc9a9735a30f936f0b3814f"
+  },
+  "nodeGroups": [],
+  "id": "EmMIiVnp0qcHgCWV",
+  "tags": []
+}

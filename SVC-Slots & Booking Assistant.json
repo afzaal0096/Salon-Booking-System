@@ -1,0 +1,355 @@
+{
+  "name": "SVC-Slots & Booking Assistant",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "2b47f9f9-6a1b-48a3-8141-a03f85426908",
+      "name": "When chat message received",
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.5,
+      "position": [
+        240,
+        0
+      ],
+      "webhookId": "3e8ce2a1-64ac-40d2-8384-997f96d5c88f"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.chatInput }}",
+        "options": {
+          "systemMessage": "You are a professional and friendly clinic booking assistant. Your job is to help patients find available appointment slots, book them, reschedule, or cancel. \n\nRules you must follow strictly:\n1. Always confirm the patient's name, phone number, and requested service before finalizing any booking.\n2. Never give medical advice under any circumstances. If a patient asks for medical advice, kindly remind them to consult a professional.\n3. If a patient mentions any emergency keywords (like severe pain, bleeding, accident, breathing trouble), immediately provide a fixed emergency message telling them to visit the nearest emergency room or call emergency services, and flag reception.\n4. Use the slot-finder workflow tool to check available slots when asked. It returns slots for a given date and needs provider_id, service_id and requested_date.\n5. When the patient has chosen a slot and confirmed their details, call the booking workflow tool with patient_name, phone, service, and booking_date (YYYY-MM-DD). Only book after explicit confirmation, and tell the patient once the booking is done."
+        }
+      },
+      "id": "a346c340-3126-4470-bfa0-25116753c93d",
+      "name": "AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        448,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-5-mini"
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "id": "b14c18c8-765a-4c1c-a8c2-0df22edec8c4",
+      "name": "OpenAI Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.3,
+      "position": [
+        320,
+        208
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": null,
+          "name": "",
+          "__aiGatewayManaged": true
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "test-session-1"
+      },
+      "id": "5a885441-7d78-4390-9d6c-5e9a7bad01b4",
+      "name": "Simple Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.4,
+      "position": [
+        464,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "description": "Call this tool to find available appointment slots for a given date.",
+        "workflowId": {
+          "__rl": true,
+          "value": "EmMIiVnp0qcHgCWV",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/EmMIiVnp0qcHgCWV",
+          "cachedResultName": "SVC-Booking Sub-Workflow"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "provider_id": "={{ $fromAI('provider_id', 'The provider ID', 'string') }}",
+            "service_id": "={{ $fromAI('service_id', 'The service ID, e.g. dental-consultation', 'string') }}",
+            "requested_date": "={{ $fromAI('requested_date', 'The date to check, YYYY-MM-DD', 'string') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "provider_id",
+              "displayName": "provider_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "service_id",
+              "displayName": "service_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "requested_date",
+              "displayName": "requested_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "patient_name",
+              "displayName": "patient_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": true
+            },
+            {
+              "id": "phone",
+              "displayName": "phone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": true
+            },
+            {
+              "id": "service",
+              "displayName": "service",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": true
+            },
+            {
+              "id": "booking_date",
+              "displayName": "booking_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "id": "f76c1d97-92d2-4e7c-8ba9-2e324285c9e3",
+      "name": "Call 'SVC-Slots & Booking Assistant'",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        608,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "description": "Call this tool to book a confirmed appointment for a patient. Only call it after the patient has confirmed their name, phone number, service, date and the exact slot.",
+        "workflowId": {
+          "__rl": true,
+          "value": "EmMIiVnp0qcHgCWV",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/EmMIiVnp0qcHgCWV",
+          "cachedResultName": "SVC-Booking Sub-Workflow"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "patient_name": "={{ $fromAI('patient_name', 'The patient\\'s full name', 'string') }}",
+            "phone": "={{ $fromAI('phone', 'The patient\\'s phone number', 'string') }}",
+            "service": "={{ $fromAI('service', 'The service being booked, e.g. Dental consultation', 'string') }}",
+            "booking_date": "={{ $fromAI('booking_date', 'The booking date in YYYY-MM-DD format', 'string') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "provider_id",
+              "displayName": "provider_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "service_id",
+              "displayName": "service_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "requested_date",
+              "displayName": "requested_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "patient_name",
+              "displayName": "patient_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "phone",
+              "displayName": "phone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "service",
+              "displayName": "service",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "booking_date",
+              "displayName": "booking_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "id": "17bd0263-acd9-4da0-907d-dea726c74016",
+      "name": "Book Appointment",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        768,
+        208
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'SVC-Slots & Booking Assistant'": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Book Appointment": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true
+  },
+  "versionId": "89a1dc96-4ace-4fc6-b328-f3ce9c4e56cc",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "defbd24ddc4e5cb8b6b84f7986634177b7d669c95cc9a9735a30f936f0b3814f"
+  },
+  "nodeGroups": [],
+  "id": "XPoH7phPC4LtSJKk",
+  "tags": []
+}
